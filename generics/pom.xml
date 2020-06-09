@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>me.hjlee</groupId>
-    <artifactId>springfuture2</artifactId>
+    <artifactId>generics</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>springfuture2</name>
+    <name>generics</name>
     <description>Demo project for Spring Boot</description>
 
     <properties>
@@ -34,11 +34,6 @@
                     <artifactId>junit-vintage-engine</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport</artifactId>
-            <version>4.1.36.Final</version>
         </dependency>
     </dependencies>
 

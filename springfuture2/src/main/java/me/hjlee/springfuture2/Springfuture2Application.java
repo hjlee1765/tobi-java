@@ -1,8 +1,16 @@
 package me.hjlee.springfuture2;
 
+import io.netty.channel.nio.NioEventLoopGroup;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.Netty4ClientHttpRequestFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,30 +18,51 @@ import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SpringBootApplication
+@RestController
 public class Springfuture2Application {
 
-    @RestController
-    public static class MyController{
-        static final String URL1 = "http://localhost:8080/service?req={req}";
-        static final String URL2 = "http://localhost:8081/service2?req={req}";
-        AsyncRestTemplate rt = new AsyncRestTemplate();
+    static final String URL1 = "http://localhost:8081/service?req={req}";
+    static final String URL2 = "http://localhost:8081/service2?req={req}";
 
-        @GetMapping("/rest")
-        public DeferredResult<String> rest(int idx) {
-            DeferredResult<String> dr = new DeferredResult<>();
-            
-            Completion
-                    .from(rt.getForEntity(URL1, String.class, "h" + idx))
-                    .andApply(s -> rt.getForEntity(URL2, String.class, s.getBody()))
-                    .andError(e -> dr.setErrorResult(e))    //에러 발생시 종료. 에러 없을 경우 아래 직렬화 함수 수행.
-                    .andAccept(s -> dr.setResult(s.getBody()));
+    AsyncRestTemplate rt = new AsyncRestTemplate(new Netty4ClientHttpRequestFactory(new NioEventLoopGroup(1)));
 
-            return dr;
-        }
+    @Autowired
+    MyService myService;
+
+    @GetMapping("/rest")
+    public DeferredResult<String> rest(int idx) {
+        DeferredResult<String> dr = new DeferredResult<>();
+
+        toCF(rt.getForEntity(URL1, String.class, "h" + idx))
+                .thenCompose(s -> toCF(rt.getForEntity(URL2, String.class, s.getBody())))
+                .thenApplyAsync(s2 -> myService.work(s2.getBody()))
+                .thenAccept(s3 -> dr.setResult(s3))
+                .exceptionally(e -> {dr.setErrorResult(e.getMessage()); return (Void)null;});
+
+/*            Completion
+                .from(rt.getForEntity(URL1, String.class, "h" + idx))
+                .andApply(s -> rt.getForEntity(URL2, String.class, s.getBody()))
+                .andError(e -> dr.setErrorResult(e))    //에러 발생시 종료. 에러 없을 경우 아래 직렬화 함수 수행.
+                .andAccept(s -> dr.setResult(s.getBody()));*/
+
+
+        return dr;
+    }
+    //lf -> to CF
+    <T> CompletableFuture<T> toCF(ListenableFuture<T> lf){
+        CompletableFuture<T> cf = new CompletableFuture<T>();
+        lf.addCallback(s -> cf.complete(s), e-> cf.completeExceptionally(e));
+        return cf;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(Springfuture2Application.class, args);
     }
 
     public static class AcceptCompletion extends Completion{
@@ -125,7 +154,19 @@ public class Springfuture2Application {
         void run(ResponseEntity<String> value) {
         }
     }
-    public static void main(String[] args) {
-        SpringApplication.run(Springfuture2Application.class, args);
+    @Service
+    public static class MyService {
+        public String work(String req){
+            return req + "/asyncwork";
+        }
+    }
+
+    @Bean
+    public ThreadPoolTaskExecutor myThreadPool(){
+        ThreadPoolTaskExecutor te = new ThreadPoolTaskExecutor();
+        te.setCorePoolSize(1);
+        te.setMaxPoolSize(1);
+        te.initialize();
+        return te;
     }
 }
