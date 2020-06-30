@@ -1,5 +1,6 @@
 package me.hjlee.webflux;
 
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StopWatch;
@@ -7,12 +8,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
+@Slf4j
 public class LoadTest {
     static AtomicInteger counter = new AtomicInteger(0);
 
     public static void main(String[] args) throws InterruptedException, BrokenBarrierException {
-        Logger logger = LoggerFactory.getLogger(LoadTest.class);
         ExecutorService es = Executors.newFixedThreadPool(100);
 
         RestTemplate rt = new RestTemplate();
@@ -30,14 +30,14 @@ public class LoadTest {
 
                 barrier.await();    //parties의 숫자에 도달하면 모든 스레드가 동시에 실행됨.
 
-                logger.info("Thread {}",idx);
+                log.info("Thread {}",idx);
                 StopWatch sw = new StopWatch();
                 sw.start();
 
                 String res = rt.getForObject(url, String.class, idx); //getForObject : blocking method. 대기상태에 빠진다.
 
                 sw.stop();
-                logger.info("Elapsed: {} {} / {}", idx, sw.getTotalTimeSeconds(), res);
+                log.info("Elapsed: {} {} / {}", idx, sw.getTotalTimeSeconds(), res);
 
                 return null;
             });
@@ -51,6 +51,6 @@ public class LoadTest {
         es.awaitTermination(100, TimeUnit.SECONDS);
 
         main.stop();
-        logger.info("Total: {}", main.getTotalTimeSeconds());
+        log.info("Total: {}", main.getTotalTimeSeconds());
     }
 }

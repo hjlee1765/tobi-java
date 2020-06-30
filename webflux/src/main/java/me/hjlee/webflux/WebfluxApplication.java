@@ -1,6 +1,7 @@
 package me.hjlee.webflux;
 
 import ch.qos.logback.core.net.server.Client;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,10 +18,12 @@ import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 @SpringBootApplication
 @RestController
+@Slf4j
 public class WebfluxApplication {
 
     static final String URL1 = "http://localhost:8081/service?req={req}";
@@ -36,13 +39,10 @@ public class WebfluxApplication {
     public Mono<String> rest(int idx) {
         return client.get().uri(URL1, idx).exchange()                       //Mono<ClientResponse>
                 .flatMap(c -> c.bodyToMono(String.class))                   //Mono<String>
+                .doOnNext(c -> log.info(c.toString()))
                 .flatMap(res1 -> client.get().uri(URL2, res1).exchange())   //Mono<ClientResponse>
                 .flatMap(c -> c.bodyToMono(String.class))                   //Mono<String>
-                // 동기 함수 호출 시.
-                //.map(res2 -> myService.work(res2));
-
-                // (작업이 오래걸려) 비동기 함수 호출 시.
-                //completableFuture<> -> Mono로 변환 후 flatmap 사용.
+                .doOnNext(c -> log.info(c.toString()))
                 .flatMap(res2 -> Mono.fromCompletionStage(myService.workAsync(res2)));
     }
 
