@@ -22,14 +22,15 @@ import java.util.stream.Stream;
 public class PubSub {
     public static void main(String[] args) throws InterruptedException {
 
+        //
         // pub -> [Data1] -> mapPub -> [Data2] -> LogSub
-        //                <- subscribe(LogSub)  //pub 에 정의된 메서드를 실행.
-        //                -> onSubscribe(s)     //sub에 정의된 메서드를 pub이 실행
-        //                <- request(unbounded) //pub에 정의된 메서드를 sub이 실행(UNBOUNDED = MAX SIZE)
-        //                -> onNext             //sub에 정의된 메서드를 pub이 실행
+        //                <- subscribe(LogSub)          //pub 에 정의된 메서드를 실행.    (Subscriber를 오버라이드 하면서 최초 pub까지 넘겨준다.)
+        //                -> onSubscribe(Subscription)  //sub에 정의된 메서드를 pub이 실행 (최초 pub이 실행, Subscription 객체 생성.)
+        //                <- request(unbounded)         //최초 pub에 정의된 Subscription 객체의 Request 메서드를 sub이 실행
+        //                -> onNext(iter)               //첫 번째 pub에서 지금껏 오버라이드 된 Subscriber의 onNext함수를 실행.
+        //                -> onNext                     //두 번째 pub에서 지금껏 오버라이드 된 Subscriber의 onNext함수를 실행.
         //                -> onNext
-        //                -> onNext
-        //                -> onComplete         //sub에 정의된 메서드를 pub이 실행
+        //                -> onComplete                 //sub에 정의된 메서드를 pub이 실행
 
         Publisher<Integer> pub = iterPub(Stream.iterate(1, a->a+1).limit(10).collect(Collectors.toList()));
         //Publisher<String> mapPub = mapPub(pub, s -> "[" + s + "]"); //타입 변환 가능한 mapPub
