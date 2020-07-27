@@ -11,10 +11,17 @@ import reactor.core.publisher.Mono;
 @RestController
 @Slf4j
 public class Webflux2Application {
-
 	@GetMapping("/")
 	Mono<String> hello(){
-		return Mono.just("Hello WebFlux").log();
+		log.info("pops1");
+		String msg = generateHello();
+		Mono<String> m = Mono.just(msg).doOnNext(c->log.info(c)).log();
+		m.block();
+		return m;
+	}
+	private String generateHello() {
+		log.info("method generateHello()");
+		return "Helo Mono";
 	}
 
 	public static void main(String[] args) {
